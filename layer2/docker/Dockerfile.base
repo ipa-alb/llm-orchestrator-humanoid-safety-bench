@@ -1,0 +1,78 @@
+# g1-base: common toolchain + MuJoCo 3.2.3 + unitree_sdk2 (C++) + unitree_sdk2py (python)
+#
+# Build (context = repo root):
+#   docker build -f docker/Dockerfile.base -t g1-base .
+#
+# Sources are bind-mounted at /ws at runtime; this image only carries
+# toolchains and compiled/installed artifacts. Python code edits in the
+# repo never require a rebuild.
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# --- apt dependencies (repo list + python/headless-GL/tooling extras) ---
+COPY requirements-apt.txt /tmp/requirements-apt.txt
+RUN apt-get update && \
+    xargs -a /tmp/requirements-apt.txt apt-get install -y --no-install-recommends && \
+    apt-get install -y --no-install-recommends \
+        python3 python3-pip python3-dev \
+        xvfb libosmesa6-dev \
+        wget ca-certificates \
+        libgl1 libglib2.0-0 && \
+    rm -rf /var/lib/apt/lists/*
+
+# --- MuJoCo 3.2.3: official prebuilt release (lib + headers + cmake config) ---
+ARG MUJOCO_VERSION=3.2.3
+RUN wget -q "https://github.com/google-deepmind/mujoco/releases/download/${MUJOCO_VERSION}/mujoco-${MUJOCO_VERSION}-linux-x86_64.tar.gz" \
+        -O /tmp/mujoco.tar.gz && \
+    tar -xzf /tmp/mujoco.tar.gz -C /opt && \
+    ln -s /opt/mujoco-${MUJOCO_VERSION} /opt/mujoco && \
+    rm /tmp/mujoco.tar.gz
+ENV MUJOCO_DIR=/opt/mujoco
+ENV LD_LIBRARY_PATH=/opt/mujoco/lib
+
+# --- python packages ---
+# cyclonedds==0.10.2 ships a prebuilt manylinux wheel for cp310, so no
+# CYCLONEDDS_HOME / source build is needed (see vendor/unitree_sdk2_python/README.md).
+# pygame is required by unitree_mujoco's simulate_python bridge.
+# Single resolve so pins stay consistent: numpy<2 for the older DDS/sdk stack,
+# opencv 4.10 (last line built against numpy 1.x).
+COPY requirements-pip.txt /tmp/requirements-pip.txt
+RUN pip3 install --no-cache-dir \
+        -r /tmp/requirements-pip.txt \
+        "mujoco==${MUJOCO_VERSION}" \
+        "numpy<2" \
+        "opencv-python==4.10.0.84" \
+        pyzmq \
+        pyyaml \
+        onnxruntime \
+        pygame
+
+# --- unitree_sdk2 (C++) -> /opt/unitree_sdk2 ---
+COPY vendor/unitree_sdk2 /tmp/unitree_sdk2
+RUN cmake -S /tmp/unitree_sdk2 -B /tmp/unitree_sdk2/build \
+        -DCMAKE_INSTALL_PREFIX=/opt/unitree_sdk2 \
+        -DBUILD_EXAMPLES=OFF && \
+    cmake --build /tmp/unitree_sdk2/build -j"$(nproc)" && \
+    cmake --install /tmp/unitree_sdk2/build && \
+    rm -rf /tmp/unitree_sdk2
+ENV CMAKE_PREFIX_PATH=/opt/mujoco:/opt/unitree_sdk2
+
+# --- unitree_sdk2_python ---
+# Installed from a build-time COPY; the runtime bind-mount of the repo at /ws
+# shadows nothing (site-packages copy is independent and identical).
+# NOTE: the vendored snapshot lacks __init__.py in some subpackages (b2, g1,
+# h1, comm), which breaks both find_packages() and `import unitree_sdk2py`.
+# Patch the build-time copy only (vendor/ itself is read-only by convention).
+COPY vendor/unitree_sdk2_python /tmp/unitree_sdk2_python
+RUN find /tmp/unitree_sdk2_python/unitree_sdk2py -type d ! -name __pycache__ \
+        -exec sh -c 'test -f "$0/__init__.py" || touch "$0/__init__.py"' {} \; && \
+    pip3 install --no-cache-dir /tmp/unitree_sdk2_python && \
+    rm -rf /tmp/unitree_sdk2_python && \
+    python3 -c "import unitree_sdk2py; from unitree_sdk2py.core.channel import ChannelFactoryInitialize; print('unitree_sdk2py import OK')"
+
+# Shared contract defaults (DDS domain 1 on loopback is set by the apps,
+# CYCLONEDDS_URI left unset; unitree ChannelFactoryInitialize handles it).
+WORKDIR /ws
+CMD ["/bin/bash"]

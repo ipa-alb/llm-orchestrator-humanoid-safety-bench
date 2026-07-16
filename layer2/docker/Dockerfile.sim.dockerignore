@@ -1,0 +1,16 @@
+.git
+.gitmodules
+vendor/unitree_ros2
+vendor/unitree_sdk2
+vendor/unitree_sdk2_python
+vendor/unitree_mujoco/unitree_robots
+vendor/unitree_mujoco/terrain_tool
+vendor/unitree_mujoco/doc
+vendor/unitree_mujoco/example
+vendor/unitree_mujoco/simulate_python
+bench
+scenes
+docker
+scripts
+**/*.pdf
+**/__pycache__

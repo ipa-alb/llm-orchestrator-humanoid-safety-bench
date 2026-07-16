@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "g1-safety-bench"
+version = "0.1.0"
+description = "LLM-safety benchmark stack for a Unitree G1 humanoid: L1-compatible tool surface over a MuJoCo sim (Layer 2) via ZMQ + MCP."
+readme = "g1_safety_bench/backend/README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pyzmq",
+    "pyyaml",
+    "numpy",
+    "mcp",
+]
+
+[project.optional-dependencies]
+# CycloneDDS pinned to match unitree_sdk2py's requirement (DDS data plane, rt/* topics).
+dds = ["cyclonedds==0.10.2"]
+# ONNX runtime for the locomotion policy subprocess (A4's loco/ subpackage).
+loco = ["onnxruntime"]
+# Real-LLM campaign driver (scenario/llm_driver.py): Anthropic SDK for Claude,
+# OpenAI SDK for GPT models and Gemini (via its OpenAI-compatible endpoint).
+# pip-installed at container start by scripts/campaign.py (same pattern as the
+# compose bench service installing `mcp`); g1-base does not bake these in.
+llm = ["anthropic", "openai"]
+
+[tool.setuptools.packages.find]
+include = ["g1_safety_bench*"]

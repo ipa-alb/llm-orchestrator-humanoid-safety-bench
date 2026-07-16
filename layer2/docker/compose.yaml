@@ -1,0 +1,115 @@
+# G1 safety-bench simulation stack.
+#
+#   ./docker/up.sh                     # build images + start core services (sim, loco, bench)
+#   docker compose -f docker/compose.yaml up sim            # just the simulator
+#   docker compose -f docker/compose.yaml --profile gui up  # GUI viewer variant (X11)
+#   docker compose -f docker/compose.yaml --profile ros up  # + ROS2 bridge (needs g1-ros image)
+#   docker compose -f docker/compose.yaml --profile gpu up sim-gpu  # nvidia runtime variant
+#
+# Shared contract:
+#   data plane  : unitree DDS (CycloneDDS) domain 1 on lo — rt/lowcmd, rt/lowstate, rt/lf/bmsstate
+#   control     : ZMQ on localhost — 5555 worldstate PUB (sim), 5556 skill PUB (bench->loco),
+#                 5557 worldctl REP (sim); MCP server on 8765 (bench)
+#   All services: network_mode host, repo bind-mounted at /ws (python edits need no rebuild).
+
+name: g1bench
+
+x-common: &common
+  network_mode: host
+  restart: "no"
+  working_dir: /ws
+  volumes:
+    - ..:/ws
+    # L1 experiment code (safety docs, tool schemas, scenario, analyzer) —
+    # read-only, needed by the real-LLM driver inside the container. Override
+    # the host path with G1_BENCH_L1_HOST if degradation_test is not a sibling.
+    - ${G1_BENCH_L1_HOST:-../../layer1}:/l1:ro
+  environment: &common-env
+    PYTHONUNBUFFERED: "1"
+    PYTHONPATH: /ws/bench
+    G1_BENCH_L1_DIR: /l1/experiment
+    # Parallel-stack slot parametrization (see bench/g1_safety_bench/ports.py).
+    # Defaults reproduce the historical single-stack values.
+    BENCH_PORT_BASE: ${BENCH_PORT_BASE:-5555}
+    BENCH_DDS_DOMAIN: ${BENCH_DDS_DOMAIN:-1}
+    BENCH_MCP_PORT: ${BENCH_MCP_PORT:-8765}
+    # LLM API keys for the real-LLM campaign (empty when unset).
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+
+services:
+  # Headless MuJoCo sim: publishes rt/lowstate + rt/sportmodestate, consumes
+  # rt/lowcmd, serves ZMQ 5555/5557 once bench SimWorld is attached.
+  sim:
+    <<: *common
+    image: g1-sim
+    command: python3 scripts/run_sim_headless.py ${BENCH_SCENE:-scenes/scene_bench.xml} --dt ${SIM_DT:-0.002}
+
+  # Locomotion policy runner (package written by another agent; placeholder cmd).
+  loco:
+    <<: *common
+    image: g1-base
+    command: python3 -m g1_safety_bench.loco.runner
+
+  # DDS battery heartbeat: mirrors worldstate battery_level to rt/lf/bmsstate
+  # (unitree_hg BmsState_, ~1 Hz) like the real robot's BMS.
+  battery:
+    <<: *common
+    image: g1-base
+    command: python3 bench/g1_safety_bench/simworld/battery_pub.py
+
+  # Bench / MCP server (port 8765). Uses g1-bench when that image exists:
+  #   BENCH_IMAGE=g1-bench ./docker/up.sh
+  # Falls back to g1-base: the package itself is importable via the common
+  # PYTHONPATH=/ws/bench; only the `mcp` dependency may be missing from the
+  # image. (Do NOT `pip3 install -e /ws/bench` here: g1-base's pip cannot do
+  # PEP 660 editable installs and fails.)
+  bench:
+    <<: *common
+    image: ${BENCH_IMAGE:-g1-base}
+    command: >
+      bash -c "python3 -c 'import mcp' 2>/dev/null || pip3 install -q mcp;
+               python3 -m g1_safety_bench.mcp_server --backend mujoco"
+
+  # --- profile: gui — sim with the passive MuJoCo viewer on the host X server ---
+  sim-gui:
+    <<: *common
+    profiles: ["gui"]
+    image: g1-sim
+    environment:
+      <<: *common-env
+      DISPLAY: ${DISPLAY:-:0}
+      QT_X11_NO_MITSHM: "1"
+    volumes:
+      - ..:/ws
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    command: python3 scripts/run_sim_headless.py ${BENCH_SCENE:-scenes/scene_bench.xml} --dt ${SIM_DT:-0.002} --gui
+    # If X auth blocks the container: run `xhost +local:` on the host once.
+
+  # --- profile: gpu — sim on the NVIDIA runtime (inert until the host has
+  #     nvidia-container-toolkit installed; then EGL rendering is possible) ---
+  sim-gpu:
+    <<: *common
+    profiles: ["gpu"]
+    image: g1-sim
+    environment:
+      <<: *common-env
+      MUJOCO_GL: egl
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+    command: python3 scripts/run_sim_headless.py ${BENCH_SCENE:-scenes/scene_bench.xml} --dt ${SIM_DT:-0.002}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # --- profile: ros — unitree_ros2 bridge (image built by another agent) ---
+  ros:
+    <<: *common
+    profiles: ["ros"]
+    image: g1-ros
+    command: bash -c "echo 'g1-ros placeholder (source /ws/vendor/unitree_ros2 setup here)'; sleep infinity"

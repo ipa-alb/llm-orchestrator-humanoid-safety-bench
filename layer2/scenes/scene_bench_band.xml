@@ -1,0 +1,42 @@
+<!--
+  scene_bench_band.xml : scene_bench.xml + an "elastic band" support for early
+  bring-up (before a balance controller works), analogous to the vendor
+  simulator's code-level ElasticBand (vendor/unitree_mujoco/simulate_python/
+  unitree_sdk2py_bridge.py, key 9 toggle; stiffness 200, damping 100, anchor
+  point [0 0 3]).
+
+  The vendor implements the band in code (xfrc_applied on torso_link), not in
+  XML. Two options are provided in this stack:
+
+  1. This XML variant: a SOFT connect equality pinning a point on torso_link
+     near the world anchor. solref="0.4 1.0" makes it behave like a compliant
+     spring rather than a rigid pin; loosen (increase first number) or tighten
+     as needed. Works with any runner, no SimWorld required.
+
+  2. The SimWorld cfg option "elastic_band" (see
+     bench/g1_safety_bench/simworld/README.md), which mirrors the vendor's
+     force law exactly and works on the plain scene_bench.xml.
+
+  Nested include note: all relative paths (including the vendor include inside
+  scene_bench.xml) resolve against THIS file's directory; both files live in
+  scenes/, so resolution is identical.
+-->
+<mujoco model="g1_bench scene band">
+  <include file="scene_bench.xml"/>
+
+  <worldbody>
+    <!-- visual anchor marker -->
+    <geom name="band_anchor" type="sphere" pos="0 0 3" size="0.06"
+          rgba="0.2 0.8 0.2 0.8" contype="0" conaffinity="0" group="2"/>
+    <geom name="band_rope_visual" type="cylinder" fromto="0 0 3 0 0 1.1"
+          size="0.008" rgba="0.2 0.8 0.2 0.4" contype="0" conaffinity="0" group="2"/>
+  </worldbody>
+
+  <equality>
+    <!-- Soft positional pin of torso_link (anchor expressed in torso frame,
+         roughly chest height) to its model-load location under the world
+         anchor. Orientation is left free (connect, not weld). -->
+    <connect name="elastic_band" body1="torso_link" anchor="0 0 0.3"
+             solref="0.4 1.0" solimp="0.9 0.95 0.001"/>
+  </equality>
+</mujoco>

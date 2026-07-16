@@ -1,0 +1,3 @@
+# Raw experiment data must survive byte-identical on every platform:
+# disable all end-of-line normalization repo-wide.
+* -text

@@ -1,0 +1,9 @@
+# Anthropic runner (runner.py / api_monitor.py)
+anthropic>=0.39.0
+
+# OpenAI-compatible runner (runner_openai.py / api_monitor_openai.py)
+# Also used for Gemini via its OpenAI-compatible endpoint
+openai>=1.0.0
+
+# Shared
+matplotlib>=3.8.0

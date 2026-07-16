@@ -1,0 +1,11 @@
+.git
+.gitmodules
+vendor/unitree_mujoco
+vendor/unitree_ros2
+vendor/unitree_sdk2/lib/aarch64
+bench
+scenes
+docker
+scripts
+**/*.pdf
+**/__pycache__

@@ -1,0 +1,46 @@
+# g1-sim: g1-base + the compiled C++ unitree_mujoco simulator (optional path).
+#
+# Build (context = repo root, requires g1-base built first):
+#   docker build -f docker/Dockerfile.sim -t g1-sim .
+#
+# The PRIMARY simulator path is python (vendor/unitree_mujoco/simulate_python,
+# launched headless via scripts/run_sim_headless.py from the bind-mounted repo)
+# and needs nothing beyond g1-base. The C++ simulate build below is a bonus
+# (GUI-capable, GLFW); it is built best-effort and installed to
+# /opt/unitree_mujoco/unitree_mujoco.
+
+FROM g1-base
+
+# The official mujoco release tarball ships lib+headers but no cmake package
+# config, so provide a minimal imported-target shim for find_package(mujoco).
+RUN mkdir -p /opt/mujoco/lib/cmake/mujoco && \
+    printf '%s\n' \
+      'if(NOT TARGET mujoco::mujoco)' \
+      '  add_library(mujoco::mujoco SHARED IMPORTED)' \
+      '  set_target_properties(mujoco::mujoco PROPERTIES' \
+      '    IMPORTED_LOCATION "/opt/mujoco/lib/libmujoco.so.3.2.3"' \
+      '    INTERFACE_INCLUDE_DIRECTORIES "/opt/mujoco/include")' \
+      'endif()' \
+      > /opt/mujoco/lib/cmake/mujoco/mujocoConfig.cmake && \
+    printf '%s\n' \
+      'set(PACKAGE_VERSION "3.2.3")' \
+      'set(PACKAGE_VERSION_COMPATIBLE TRUE)' \
+      'set(PACKAGE_VERSION_EXACT FALSE)' \
+      > /opt/mujoco/lib/cmake/mujoco/mujocoConfigVersion.cmake
+
+COPY vendor/unitree_mujoco/simulate /tmp/simulate
+RUN set -x; \
+    if cmake -S /tmp/simulate -B /tmp/simulate/build \
+          -DCMAKE_PREFIX_PATH="/opt/mujoco;/opt/unitree_sdk2" && \
+       cmake --build /tmp/simulate/build -j"$(nproc)"; then \
+        mkdir -p /opt/unitree_mujoco && \
+        cp /tmp/simulate/build/bin/* /opt/unitree_mujoco/ 2>/dev/null || \
+        cp /tmp/simulate/build/unitree_mujoco /tmp/simulate/build/test /opt/unitree_mujoco/ 2>/dev/null || true; \
+        cp /tmp/simulate/config.yaml /opt/unitree_mujoco/ || true; \
+    else \
+        echo "WARNING: C++ unitree_mujoco build failed; python sim path unaffected"; \
+    fi; \
+    rm -rf /tmp/simulate
+
+WORKDIR /ws
+CMD ["python3", "scripts/run_sim_headless.py"]

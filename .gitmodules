@@ -1,0 +1,9 @@
+[submodule "layer2/vendor/unitree_mujoco"]
+	path = layer2/vendor/unitree_mujoco
+	url = https://github.com/unitreerobotics/unitree_mujoco
+[submodule "layer2/vendor/unitree_sdk2"]
+	path = layer2/vendor/unitree_sdk2
+	url = https://github.com/unitreerobotics/unitree_sdk2
+[submodule "layer2/vendor/unitree_sdk2_python"]
+	path = layer2/vendor/unitree_sdk2_python
+	url = https://github.com/unitreerobotics/unitree_sdk2_python
