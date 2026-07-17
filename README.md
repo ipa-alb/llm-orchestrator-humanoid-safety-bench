@@ -101,6 +101,12 @@ The submodules are the Unitree G1 robot model and SDKs, pinned to the exact
 upstream commits whose G1 model, meshes, and Python SDK match what the
 experiments ran.
 
+If you already cloned without `--recurse-submodules`, fetch them with:
+
+```bash
+git submodule update --init --recursive
+```
+
 ## What is deliberately NOT here
 
 - Physical-robot (Layer 3) code or data — that work is ongoing.
