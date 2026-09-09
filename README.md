@@ -4,6 +4,7 @@
 
 **A safety benchmark for LLM orchestrators in human–humanoid collaboration**
 
+[![arXiv](https://img.shields.io/badge/arXiv-2609.07288-b31b1b)](https://arxiv.org/abs/2609.07288)
 [![Paper](https://img.shields.io/badge/paper-IEEE%20CBS%202026-b31b1b)](#citation)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-3776ab)](layer1/experiment/requirements.txt)
@@ -14,7 +15,7 @@
 Code, raw transcripts, scorer and figure pipeline behind the paper.<br>
 Every published number can be re-derived from this repository, offline, in about two minutes.
 
-[Overview](#overview) · [Findings](#findings) · [Quick start](#quick-start-verify-the-paper-offline) · [Layout](#repository-layout) · [Reproduce](REPRODUCING.md) · [Cite](#citation)
+[Paper](https://arxiv.org/abs/2609.07288) · [Overview](#overview) · [Findings](#findings) · [Quick start](#quick-start-verify-the-paper-offline) · [Layout](#repository-layout) · [Reproduce](REPRODUCING.md) · [Cite](#citation)
 
 </div>
 
@@ -131,15 +132,21 @@ The benchmark code and data are released under the **MIT License** ([LICENSE](LI
 
 ## Citation
 
+Preprint: **[arXiv:2609.07288](https://arxiv.org/abs/2609.07288)** (cs.RO, 7 September 2026).
+
 ```bibtex
 @inproceedings{robot-ignores-you-2026,
   title     = {How Long Until Your Robot Ignores You? A Safety Benchmark for
                {LLM} Orchestrators in Human-Humanoid Collaboration},
-  author    = {TODO: author list as on the camera-ready},
+  author = {Bajrami, Aulon and Elshamouty, Mohamed and Kraus, Werner},
   booktitle = {IEEE International Conference on Cyborg and Bionic Systems (CBS)},
   year      = {2026},
+  eprint = {2609.07288},
+  archivePrefix = {arXiv},
+  primaryClass = {cs.RO},
+  url = {https://arxiv.org/abs/2609.07288},
   note      = {DOI to be added when the proceedings are published}
 }
 ```
 
-Machine-readable metadata is in [CITATION.cff](CITATION.cff); the author list and DOI will be filled in when the proceedings appear.
+Machine-readable metadata is in [CITATION.cff](CITATION.cff); the DOI will be filled in when the proceedings appear.
