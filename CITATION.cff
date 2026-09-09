@@ -3,15 +3,27 @@ message: "If you use this benchmark, please cite the paper below."
 title: "llm-orchestrator-humanoid-safety-bench"
 type: software
 license: MIT
-repository-code: "TODO: repository URL after publication"
+repository-code: "https://github.com/ipa-alb/llm-orchestrator-humanoid-safety-bench"
+authors:
+  - family-names: "Bajrami"
+    given-names: "Aulon"
+  - family-names: "Elshamouty"
+    given-names: "Mohamed"
+  - family-names: "Kraus"
+    given-names: "Werner"
 preferred-citation:
   type: conference-paper
   title: "How Long Until Your Robot Ignores You? A Safety Benchmark for LLM Orchestrators in Human-Humanoid Collaboration"
   conference:
     name: "IEEE International Conference on Cyborg and Bionic Systems (CBS 2026)"
   year: 2026
-  # TODO before publishing: fill in the author list exactly as on the
-  # camera-ready, and add the DOI once the proceedings are out.
+  # Preprint DOI; replace with the proceedings DOI once it is published.
+  doi: "10.48550/arXiv.2609.07288"
+  url: "https://arxiv.org/abs/2609.07288"
   authors:
-    - family-names: "TODO"
-      given-names: "TODO"
+    - family-names: "Bajrami"
+      given-names: "Aulon"
+    - family-names: "Elshamouty"
+      given-names: "Mohamed"
+    - family-names: "Kraus"
+      given-names: "Werner"
